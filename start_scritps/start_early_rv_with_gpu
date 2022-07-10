@@ -1,0 +1,5 @@
+#!/bin/tcsh
+module purge
+module load cuda/v11.4
+conda activate masterarbeit
+python main.py --model_struct=0 --training_epochs=5000 --sequence_length=4 --output_sequence_length=2 --cqt_window_length=512 --learning_rate=0.00001

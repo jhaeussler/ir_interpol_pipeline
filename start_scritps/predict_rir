@@ -1,0 +1,5 @@
+#!/bin/tcsh
+module purge
+module load cuda/v11.4
+conda activate masterarbeit
+python main.py
