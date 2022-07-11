@@ -42,9 +42,11 @@ RUN_DIREC_VEC = command_line_args.run_direc_vec
 print(f'Run Early: {RUN_EARLY_IR}')
 print(f'Run reverb: {RUN_REVERB}')
 
-# Set this true if you want to load a new dataset from files, make sure the right path is provided below.
-# Note that the datasets-list will not be created and the ml-pipeline will not be called if this is True.
-CREATE_NEW_DATASET = False
+# Here are all the datasets listed that where already analysed and saved to disk.
+PICKLE_PATH_DATASET_LISTENING_LAB = "./pickle/ListeningLab_SDM_Florian_Klein.pkl"
+PICKLE_PATH_DATASET_HE_1539B = "./pickle/H1539b_SDM_Florian_Klein.pkl"
+PICKLE_PATH_DATASET_HE_2505 = "./pickle/H2505_SDM_Florian_Klein.pkl"
+PICKLE_PATH_DATASET_ML_2102 = "./pickle/ML2-102_SDM_Florian_Klein.pkl"
 
 # location of audio recordings as .mat-files -> Path to data for creation of a new Dataset.
 # Usually the datasets will be loaded from pickle-binary-files to save time and prevent polluting the console
@@ -54,8 +56,12 @@ DATASET_HE_1539B = ("jonathan_H1539b", "sdm_data_jonathan_H1539b.mat")
 DATASET_HE_2505 = ("HE-2505", "sdm_data_jonathan_H2505.mat")
 DATASET_ML_2102 = ("jonathan_ML2102", "sdm_data_jonathan_ML2102.mat")
 
+# Set this true if you want to load a new dataset from files, make sure the right path is provided below.
+# Note that the datasets-list will not be created and the ml-pipeline will not be called if this is True.
+CREATE_NEW_DATASET = False
+
 # choose one from above
-dataset = DATASET_HE_1539B
+dataset = DATASET_LISTENING_LAB
 
 PATH_TO_NEW_DATASET = "./data/" + dataset[0]
 PATH_TO_SDM = "./data/sdm/" + dataset[1]
@@ -63,12 +69,6 @@ PATH_TO_SDM = "./data/sdm/" + dataset[1]
 LOAD_OLD_MATLAB_FILE = False
 if dataset == DATASET_LISTENING_LAB:
     LOAD_OLD_MATLAB_FILE = True
-
-# Here are all the datasets listed that where already analysed and saved to disk.
-PICKLE_PATH_DATASET_LISTENING_LAB = "./pickle/ListeningLab_SDM_Florian_Klein.pkl"
-PICKLE_PATH_DATASET_HE_1539B = "./pickle/H1539b_SDM_Florian_Klein.pkl"
-PICKLE_PATH_DATASET_HE_2505 = "./pickle/H2505_SDM_Florian_Klein.pkl"
-PICKLE_PATH_DATASET_ML_2102 = "./pickle/ML2-102_SDM_Florian_Klein.pkl"
 
 # Set to True to generate Extra Output
 RUN_DEBUG_CODE = False
@@ -105,7 +105,7 @@ def main():
         # Choose the Dataset(s) to load here.
         # ----------------------------------
 
-        load_listening_lab = False
+        load_listening_lab = True
         if load_listening_lab:
             dataset_listening_lab = load_dataset_from_disk(PICKLE_PATH_DATASET_LISTENING_LAB)
             log_dataset_loaded(dataset_listening_lab)
@@ -115,14 +115,14 @@ def main():
         # log_dataset_loaded(dataset_he_1539b)
         # datasets.append(dataset_he_1539b)
 
-        dataset_he_2505 = load_dataset_from_disk(PICKLE_PATH_DATASET_HE_2505)
-        log_dataset_loaded(dataset_he_2505)
-        datasets.append(dataset_he_2505)
+        # dataset_he_2505 = load_dataset_from_disk(PICKLE_PATH_DATASET_HE_2505)
+        # log_dataset_loaded(dataset_he_2505)
+        # datasets.append(dataset_he_2505)
 
-        """if not load_listening_lab:
+        if not load_listening_lab:
             dataset_ml_2102 = load_dataset_from_disk(PICKLE_PATH_DATASET_ML_2102)
             log_dataset_loaded(dataset_ml_2102)
-            datasets.append(dataset_ml_2102)"""
+            datasets.append(dataset_ml_2102)
 
         # ----------------------------------
         # Choose the Experiment to run here.
@@ -146,12 +146,14 @@ def main():
                             learning_rate=LEARNING_RATE,
                             cqt_window_length=CQT_WINDOW_LENGTH
                             )
+
+        # Set to true if you want to run RV-Experiment, or use the command line switch
         global RUN_DIREC_VEC
-        RUN_DIREC_VEC = False
+        RUN_DIREC_VEC = True
         if RUN_DIREC_VEC:
             richtungsvektorexperiment(datasets[-1], model_struct=MODEL_STRUCT, num_of_epochs=NUM_OF_EPOCHS)
 
-        # Load Trained Models and predict a RIR
+        # Load Trained Models and predict a RIR - does not run if no trained models are provided
         # load_pretraind_models_and_predict_ir()
 
 
@@ -160,9 +162,6 @@ def log_dataset_loaded(loaded_dataset):
 
 
 def initialize_logger(log):
-    """
-    This is probably not be best way to pass the logger instance around, but it works.
-    """
     if RUN_DEBUG_CODE:
         log.set_level(LogLevel.DEBUG)
     else:

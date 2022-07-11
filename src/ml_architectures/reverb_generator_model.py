@@ -9,19 +9,17 @@ def lr_scheduler(epoch, lr):
     return lr
 
 
+# Reset States for LSTM
 class CustomCallbacks(tf.keras.callbacks.Callback):
-
     def __init__(self, model):
         super().__init__()
         self.model = model
 
     def on_epoch_end(self, *args):
         self.model.reset_states()
-        # print('\nModel States resetted.')
 
     def on_batch_end(self, *args, **kwargs):
         self.model.reset_states()
-        # print('\nModel States resetted.')
 
 
 class ReverbGenerator(tf.Module):
@@ -62,7 +60,6 @@ class ReverbGenerator(tf.Module):
 
         self.learning_rate = learning_rate
         self.loss = tf.keras.losses.MeanSquaredError()
-        # self.loss = mse_with_spec
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
@@ -73,15 +70,11 @@ class ReverbGenerator(tf.Module):
         self.val_metric = tf.keras.metrics.MeanSquaredError()
 
         self.callbacks = [
-            # tf.keras.callbacks.ModelCheckpoint(filepath='./training_checkpoints/ckpt_{epoch}', save_weights_only=True),
-
             tf.keras.callbacks.EarlyStopping(
                 monitor='loss',
                 patience=5,
                 verbose=1,
                 restore_best_weights=True),
-
-            # tf.keras.callbacks.LearningRateScheduler(lr_scheduler),
 
             CustomCallbacks(model=self.model)
         ]
@@ -99,9 +92,6 @@ class ReverbGenerator(tf.Module):
                                       shuffle=True,
                                       verbose=2
                                       )
-
-        # plt.plot(self.history.epoch, self.history.history['loss'], label='total loss')
-        # plt.show()
 
     def evaluate(self, test_ds):
         self.test_ds = test_ds
@@ -262,75 +252,4 @@ def get_conv_model(input_shape, output_sequence_length):
         tf.keras.layers.Dense(output_sequence_length * feature_dims, name='dense_last'),
         tf.keras.layers.Reshape((output_sequence_length, feature_dims))
     ])
-    return model
-
-
-
-def get_dense_model_with_skip(input_shape, output_sequence_length):
-    feature_dims = 8192
-    flattened_dims = int((input_shape[0] * feature_dims) / 4)
-    # for audio
-    # flattened_dims = int((input_shape[0] * feature_dims) / 2)
-
-    input_layer = tf.keras.Input(shape=input_shape, name='input_layer')
-    output = tf.keras.layers.Flatten()(input_layer)
-
-    output_skip3 = tf.keras.layers.Dense(int(flattened_dims), name='dense1')(output)
-    output_skip2 = tf.keras.layers.Dense(int(flattened_dims), name='dense2')(output_skip3)
-    output_skip1 = tf.keras.layers.Dense(int(flattened_dims), name='dense3')(output_skip2)
-
-    output = tf.keras.layers.Dense(flattened_dims, name='dense4')(output_skip1)
-    output = tf.keras.layers.Dense(flattened_dims, name='dense5')(output)
-    output = tf.keras.layers.Dense(flattened_dims, name='dense6')(output)
-
-    output_concat1 = tf.keras.layers.concatenate([output, output_skip1])
-    output = tf.keras.layers.Dense(flattened_dims, name='dense7')(output_concat1)
-
-    output_concat2 = tf.keras.layers.concatenate([output, output_skip2])
-    output = tf.keras.layers.Dense(flattened_dims, name='dense8')(output_concat2)
-
-    output_concat3 = tf.keras.layers.concatenate([output, output_skip3])
-    output = tf.keras.layers.Dense(output_sequence_length * feature_dims, name='dense9')(output_concat3)
-    output = tf.keras.layers.Reshape((output_sequence_length, feature_dims))(output)
-
-    model = tf.keras.Model(input_layer, output)
-    return model
-
-
-"""
-tf.keras.layers.Conv2D(filters=32,
-                               kernel_size=2,
-                               # dilation_rate=2,
-                               strides=(1, 1), padding='valid', activation='relu'),"""
-
-
-def get_conv_model_with_skip(input_shape, output_sequence_length):
-    feature_dims = input_shape[1]
-    sequence_length = input_shape[0]
-
-    input_layer = tf.keras.Input(shape=input_shape, name='input_layer')
-    output = tf.keras.layers.Reshape((sequence_length, int(feature_dims / 2), 2))(input_layer)
-
-    output_skip = tf.keras.layers.Conv2D(filters=32,
-                                         kernel_size=2,
-                                         strides=(1, 1), padding='valid', activation='relu', name='conv_skip')(output)
-    # output_skip = tf.keras.layers.MaxPool2D(pool_size=(1, 2), padding='valid')(output_skip)
-
-    output = tf.keras.layers.Conv2D(filters=64,
-                                    kernel_size=2,
-                                    strides=(1, 1), padding='valid', activation='relu', name='conv_first')(output)
-    output = tf.keras.layers.Conv2D(filters=32,
-                                    kernel_size=(1, 2),
-                                    dilation_rate=2,
-                                    strides=(1, 1), padding='valid', activation='relu', name='conv_second')(output)
-    # output = tf.keras.layers.MaxPool2D(pool_size=(1, 2), padding='valid')(output)
-
-    output = tf.keras.layers.concatenate([output, output_skip], axis=-2)
-
-    output = tf.keras.layers.Flatten()(output)
-    output = tf.keras.layers.Dense(sequence_length * feature_dims, name='dense_first')(output)
-    output = tf.keras.layers.Dense(output_sequence_length * feature_dims, name='dense_last')(output)
-    output = tf.keras.layers.Reshape((output_sequence_length, feature_dims))(output)
-
-    model = tf.keras.Model(input_layer, output)
     return model

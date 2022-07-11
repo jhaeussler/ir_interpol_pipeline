@@ -1,7 +1,4 @@
-import time
-
 import tensorflow as tf
-import numpy as np
 
 
 def lr_scheduler(epoch, lr):
@@ -40,8 +37,10 @@ class IRGenerator(tf.Module):
 
         self.feature_dims = feature_dims
         self.input_shape = (self.input_sequence_length, self.feature_dims)
+
         print(f'network input: {self.input_shape}')
         print(f'maxx pos: {self.max_rec_pos_index}')
+
         if out_sequence_length is None:
             self.output_sequence_length = self.input_sequence_length
         else:
@@ -78,8 +77,6 @@ class IRGenerator(tf.Module):
         self.val_metric = tf.keras.metrics.MeanSquaredError()
 
         self.callbacks = [
-            # tf.keras.callbacks.ModelCheckpoint(filepath='./training_checkpoints/ckpt_{epoch}', save_weights_only=True),
-
             tf.keras.callbacks.EarlyStopping(
                 monitor='loss',
                 patience=5,
@@ -103,9 +100,6 @@ class IRGenerator(tf.Module):
                                       verbose=2
                                       )
 
-        # plt.plot(self.history.epoch, self.history.history['loss'], label='total loss')
-        # plt.show()
-
     def evaluate(self, test_ds):
         self.test_ds = test_ds
         self.losses = self.model.evaluate(self.test_ds, return_dict=True)
@@ -120,9 +114,9 @@ def get_dense_model(input_shape, output_sequence_length, out_feature_dims, max_p
         tf.keras.layers.Embedding(max_pos, 64, input_length=1),
         tf.keras.layers.Flatten(),
         tf.keras.layers.Dense(8192, name='dense_1'),
-        tf.keras.layers.Dense(8192, name='dense_2'),
-        tf.keras.layers.Dense(8192, name='dense_3'),
-        tf.keras.layers.Dense(8192, name='dense_4'),
+        # tf.keras.layers.Dense(8192, name='dense_2'),
+        # tf.keras.layers.Dense(8192, name='dense_3'),
+        # tf.keras.layers.Dense(8192, name='dense_4'),
         # tf.keras.layers.Dense(8192, name='dense_5'),
         # tf.keras.layers.Dense(8192, name='dense_6'),
         # tf.keras.layers.Dense(8192, name='dense_7'),
