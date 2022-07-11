@@ -105,7 +105,7 @@ def main():
         # Choose the Dataset(s) to load here.
         # ----------------------------------
 
-        load_listening_lab = False
+        load_listening_lab = True
         if load_listening_lab:
             dataset_listening_lab = load_dataset_from_disk(PICKLE_PATH_DATASET_LISTENING_LAB)
             log_dataset_loaded(dataset_listening_lab)
@@ -115,21 +115,19 @@ def main():
         # log_dataset_loaded(dataset_he_1539b)
         # datasets.append(dataset_he_1539b)
 
-        dataset_he_2505 = load_dataset_from_disk(PICKLE_PATH_DATASET_HE_2505)
-        log_dataset_loaded(dataset_he_2505)
-        datasets.append(dataset_he_2505)
+        # dataset_he_2505 = load_dataset_from_disk(PICKLE_PATH_DATASET_HE_2505)
+        # log_dataset_loaded(dataset_he_2505)
+        # datasets.append(dataset_he_2505)
 
-        """if not load_listening_lab:
+        if not load_listening_lab:
             dataset_ml_2102 = load_dataset_from_disk(PICKLE_PATH_DATASET_ML_2102)
             log_dataset_loaded(dataset_ml_2102)
-            datasets.append(dataset_ml_2102)"""
+            datasets.append(dataset_ml_2102)
 
         # ----------------------------------
         # Choose the Experiment to run here.
         # ----------------------------------
 
-        # TRY LOW LEARNING RATEs
-        print(f'lr: {LEARNING_RATE}')
         if RUN_EARLY_IR:
             generate_early_signal(datasets[-1],
                                   # sequence_length=SEQUENCE_LENGTH,
