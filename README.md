@@ -1,5 +1,5 @@
 # IR Interpol Pipeline
-A proof of concept project of a Machine Learning Pipeline for generating room impulse responses. Also my Master Thesis.
+A proof of concept project of a Machine Learning Pipeline for generating room impulse responses. Also the code that ran the experiments for my Master Thesis.
 
 A Dataset for testing the code can be downloaded from my Google Drive. Just unzip it and place the /data and /pickle dirs into the /ir_interpol_pipeline dir. Check the start-scripts for ideas on how to run the different experiments. The last line in the scripts runs the actual python program with arguments. Also you need a Python Env with:
 <ol>
