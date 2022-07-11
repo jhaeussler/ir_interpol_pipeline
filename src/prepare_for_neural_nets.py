@@ -70,9 +70,9 @@ def split_audio_input_label_pairs(sequence):
     return sequence[:AUDIO_INPUT_LEN], sequence[AUDIO_INPUT_LEN:]
 
 
-def make_datasets_from_pd_dataframe(dataset, column_name, split=0.9):
+def make_datasets_from_pd_dataframe(dataset, column_name):
     column_of_interest = dataset.data[[column_name]]
-    middle_of_data = 6 # int(len(column_of_interest) / 2)
+    middle_of_data = 6
 
     test_len = int(len(dataset) * 0.1)
     val_len = int(len(column_of_interest) * 0.1)
@@ -127,7 +127,7 @@ def get_cqts(dataset, windwow_length, ls_pos=0):
             cqts = cqts_datapoint
         else:
             cqts = np.concatenate((cqts, cqts_datapoint), axis=-1)
-        # draw_cqt(cqts_datapoint[:, :int(cqts_datapoint.shape[-1] / 7)])
+
         cqts_datapoints.append(np.reshape(np.transpose(cqts_datapoint), (7, -1, cqts_datapoint.shape[0])))
 
     return np.transpose(cqts), np.array(cqts_datapoints), out_len
@@ -181,7 +181,8 @@ def draw_cqt(cqt, hop_length, sr=48000, save=False, path='', filename='cqt_plot'
     plt.close()
 
 
-def draw_multiple_cqts(cqts, hop_length, plotnames=None, sr=48000, save=False, path='', filename='multiplot', bins_per_octave=128):
+def draw_multiple_cqts(cqts, hop_length, plotnames=None, sr=48000, save=False, path='', filename='multiplot',
+                       bins_per_octave=128):
     if plotnames is None:
         plotnames = ['plot' for _ in cqts]
     else:
@@ -203,8 +204,6 @@ def draw_multiple_cqts(cqts, hop_length, plotnames=None, sr=48000, save=False, p
                                        hop_length=hop_length,
                                        bins_per_octave=bins_per_octave)
         axs_array[index].set(title=f'{plotnames[index]}')
-
-    # fig.colorbar(img, ax=axs_array, format="%+2.0f dB")
 
     axs_array[-1].set_xlabel('Zeit in s')
     fig.set_size_inches(10, 6)
@@ -272,11 +271,8 @@ def make_cqt_dataset(dataset, input_length=4, output_length=2, max_val=None):
     set_input_and_output_length(input_len=input_length, output_len=output_length)
 
     windows = split_dataset_to_windows(dataset, window_length=int(input_length + output_length), step=output_length)
-
     input_label_pairs = list(map(split_inputs_from_labels, windows))
     input_label_pairs = np.array(input_label_pairs)
-
-    # print(input_label_pairs.shape)
 
     inputs = input_label_pairs[:, 0]
     inputs = np.concatenate(inputs, axis=0)
@@ -292,10 +288,9 @@ def make_cqt_dataset(dataset, input_length=4, output_length=2, max_val=None):
     inputs /= max_val
     labels /= max_val
 
-    # print(f'input: {inputs.shape}')
-    # print(f'labels: {labels.shape}')
-
     return tf.data.Dataset.from_tensor_slices((inputs, labels)), max_val
+
+
 # Early Signal Experiment
 
 
@@ -345,16 +340,10 @@ def get_input_label_pairs_for_embedding(dataset, cqt_hop_len, col_name, ls_pos=0
     labels = []
 
     for row_index, row in dataset.iterrows():
-        # print(f'row_index: {row_index}')
         if type(row[col_name]) is float:
             continue
 
-        """with multiprocessing.Pool(os.cpu_count()) as multiproc_pool:
-            label_cqts = list(multiproc_pool.map(get_cqts_of_signal_starts, row[col_name][ls_pos]))"""
-
         label_cqts = list(map(get_cqts_of_signal_starts, row[col_name][ls_pos]))
-
-        last_label = row[col_name][ls_pos][0]
 
         for label_cqt in label_cqts:
             inputs.append([row_index * upsampling])
@@ -362,14 +351,12 @@ def get_input_label_pairs_for_embedding(dataset, cqt_hop_len, col_name, ls_pos=0
 
     if max_val is None:
         max_val = get_max_of_inputs(np.array(labels))
-    # print(max_val)
     labels /= max_val
 
     return tf.data.Dataset.from_tensor_slices((inputs, labels)), max_val
 
 
 def get_cqts_of_signal_starts(signal, cqt_window_size=256, end_index=2500):
-    # You could do cqt on only the first 8000 samples or so, but cqt is most precise on longer signals
     interessantes_signal = signal[3500:65500]
 
     bins_per_oct = 128
@@ -380,22 +367,10 @@ def get_cqts_of_signal_starts(signal, cqt_window_size=256, end_index=2500):
                       n_bins=n_bins,
                       bins_per_octave=bins_per_oct)
 
-    """reconstruct = librosa.icqt(cqt,
-                               sr=48000,
-                               hop_length=cqt_window_size,
-                               bins_per_octave=bins_per_oct)"""
-
-    # draw_cqt(cqt, hop_length=cqt_window_size)
-    # draw_multiple_plots(np.array([interessantes_signal[:len(reconstruct)], reconstruct]))
-
     start_windows = int(end_index / cqt_window_size)
     cqt_start = np.transpose(cqt)[:start_windows]
     tf_label_cqt = split_complex_cqts_to_two_dims(cqt_start)
     tf_label_cqt = tf.reshape(tf_label_cqt, [cqt_start.shape[0], 2 * cqt_start.shape[1]])
-
-    # print(tf_input_cqt.shape)
-    # print(cqt.shape)
-    # print(cqt_start.shape)
 
     return tf_label_cqt
 
@@ -411,8 +386,6 @@ def plot_batch_sizes(ds):
 # Richtungsvektorexperiment
 
 def make_datasets_with_pos_and_directions(dataset, column_name='sdm_speaker1'):
-    # print(dataset.data.columns)
-
     column_of_interest = dataset.data[[column_name, 'MicPos']]
     middle_of_data = int(len(column_of_interest) / 2)
 
@@ -436,7 +409,6 @@ def make_datasets_with_pos_and_directions(dataset, column_name='sdm_speaker1'):
 
 
 def sequence_richtungsvektoren(dataset, out_len):
-    # print(dataset)
     col_name = 'sdm_speaker1'
     inputs = []
     labels = []
@@ -462,7 +434,6 @@ def sequence_richtungsvektoren(dataset, out_len):
 
 
 def sequence_richtungsvektoren_dims_separat(dataset):
-    # print(dataset)
     col_name = 'sdm_speaker1'
     inputs = []
     labels_x = []

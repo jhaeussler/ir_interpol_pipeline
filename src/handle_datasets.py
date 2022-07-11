@@ -7,7 +7,7 @@ from scipy.io import loadmat
 from dataclasses import dataclass, field
 from multiprocessing import Pool
 
-from src.preprocessing import detectect_signal_start_wrapper, normalize_audio_signal_to_one, normalize_audio_in_dataset
+from src.preprocessing import normalize_audio_signal_to_one
 
 global LOG
 
@@ -90,25 +90,21 @@ def preprocess_audio(flattened_data):
     # appropriate index. These changes would occur where the first direct sound reached the microphone.
     # Also save the max value of any signal in this datapoint in a separate variable, for later normalization
     max_vol = 0.
-    split_indices_per_loudspeaker = []
     audios_normalized_to_one = []
     index = 0
 
     for loudspeaker_recordings in flattened_data['irs']:
-        split_indices = []
         irs_normalized_to_one = []
 
         for signal in loudspeaker_recordings:
             irs_normalized_to_one.append(normalize_audio_signal_to_one(signal))
-            split_indices.append(detectect_signal_start_wrapper(irs_normalized_to_one[-1]))
 
             if max(signal) > max_vol:
                 max_vol = max(signal)
 
-        split_indices_per_loudspeaker.append(split_indices)
         audios_normalized_to_one.append(irs_normalized_to_one)
         index += 1
-    return max_vol, split_indices_per_loudspeaker, audios_normalized_to_one
+    return max_vol, audios_normalized_to_one
 
 
 def load_datapoint(flattened_data):
@@ -120,7 +116,7 @@ def load_datapoint(flattened_data):
     in the load_file-func
     """
     # print(flattened_data['MicPos'])
-    max_vol, split_indices_per_loudspeaker, audios_normalized_to_one = preprocess_audio(flattened_data)
+    max_vol, audios_normalized_to_one = preprocess_audio(flattened_data)
 
     return pd.DataFrame(
         {'MicPos': [flattened_data['MicPos']],
@@ -128,8 +124,7 @@ def load_datapoint(flattened_data):
          'irs': [flattened_data['irs']],
          'max_ir_vol_value': [max_vol],
          'irs_normalized_to_entire_dataset': [[]],
-         'irs_normalized_to_one': [np.array(audios_normalized_to_one)],
-         'split_indices_per_loudspeaker': [np.array(split_indices_per_loudspeaker)]
+         'irs_normalized_to_one': [np.array(audios_normalized_to_one)]
          })
 
 
@@ -262,8 +257,6 @@ def create_dataset_from_files(path, sdm_path=None, load_old=False):
         dataset.load_sdm(sdm_path)
 
     LOG.info(f'Loaded dataset with {len(dataset.data)} datapoints.')
-
-    normalize_audio_in_dataset(dataset)
     LOG.info('...Done.')
 
     LOG.info(dataset)
