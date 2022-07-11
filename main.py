@@ -125,7 +125,7 @@ def main():
             datasets.append(dataset_ml_2102)
 
         # ----------------------------------
-        # Choose the Experiment to run here.
+        # Choose the Experiment to run here. Or use the Command line switches.
         # ----------------------------------
 
         if RUN_EARLY_IR:
@@ -147,7 +147,7 @@ def main():
 
         # Set to true if you want to run RV-Experiment, or use the command line switch
         global RUN_DIREC_VEC
-        RUN_DIREC_VEC = True
+        RUN_DIREC_VEC = False
         if RUN_DIREC_VEC:
             richtungsvektorexperiment(datasets[-1], model_struct=MODEL_STRUCT, num_of_epochs=NUM_OF_EPOCHS)
 
