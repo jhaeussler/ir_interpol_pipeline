@@ -46,6 +46,8 @@ def load_pretraind_models_and_predict_ir():
 
         input_signal = signal[:, 1:]
         label_length = 4
+
+        # Specific to this use-case
         norm = 2.1069295406341553
 
         predictions = []
@@ -71,7 +73,6 @@ def load_pretraind_models_and_predict_ir():
 
 
 def richtungsvektorexperiment(dataset, model_struct=0, num_of_epochs=1, learning_rate=0.00001):
-    # Sehr kleiner Datensatz..
     train, val, test = prep.make_datasets_with_pos_and_directions(dataset)
 
     dims_einzeln = True
@@ -130,19 +131,6 @@ def richtungsvektorexperiment(dataset, model_struct=0, num_of_epochs=1, learning
         fp.write(f'start time: {start_time}')
         fp.write(experiment_info)
 
-    """tf.keras.utils.plot_model(
-        reverb_generator.model,
-        to_file=f"{experiment_path}/model.png",
-        show_shapes=True,
-        show_dtype=False,
-        show_layer_names=False,
-        rankdir="TB",
-        expand_nested=False,
-        dpi=120,
-        layer_range=None,
-        show_layer_activations=False,
-    )"""
-
     LOG.info('Training model...\n')
 
     train_ds_batched = train_ds.batch(batch_size_rv)
@@ -150,6 +138,7 @@ def richtungsvektorexperiment(dataset, model_struct=0, num_of_epochs=1, learning
 
     ir_generator.train_model(train_ds_batched, val_ds_batched, epochs=num_of_epochs)
 
+    # Save model after Training
     # reverb_generator.model.save(f'{experiment_path}/model.h5')
 
     LOG.info('\n...Done. Generating Predictions...')
@@ -203,11 +192,8 @@ def richtungsvektorexperiment(dataset, model_struct=0, num_of_epochs=1, learning
             prediction = np.reshape(prediction, [prediction.shape[1], prediction.shape[2]])
 
             label = input_label_pair[1]
-            # print(label.shape)
             diff = prediction - label
 
-            # norm = max(prediction.flatten())
-            # normed_pred = prediction / norm
             normed_pred = np.clip(prediction, -1, 1)
             print(max(normed_pred.flatten()))
 
@@ -252,26 +238,30 @@ def richtungsvektorexperiment(dataset, model_struct=0, num_of_epochs=1, learning
 
 
 def generate_early_signal(dataset, model_struct=0, num_of_epochs=1, learning_rate=0.0001):
-    """
-    Dense: Wenige Schichten, mehr als 3 verschlechtert ergebnisse schnell
-    """
-
     train, val, test = prep.make_datasets_with_pos_and_audio(dataset, column_name='irs_normalized_to_one')
 
     upsampling_factor = 4
-    # train = train[::10]
-    print(f'actaul train len: {len(train)}')
-
     datasetlen = len(dataset)
 
-    print(learning_rate)
-
-    cqt_transform = True
+    run_audio = False
     # Also change hop len in prep.get_input_label_pairs_for_embedding->get_cqts_of_signal_starts
     cqt_hop_len = 256
     n_bins_per_oct = 128
     max_cqt_val = None
-    if cqt_transform:
+
+    if run_audio:
+        train_split = prep.get_input_label_pairs_for_embedding_audio(train,
+                                                                     col_name='irs_normalized_to_one',
+                                                                     upsampling=upsampling_factor)
+
+        val_split = prep.get_input_label_pairs_for_embedding_audio(val,
+                                                                   col_name='irs_normalized_to_one',
+                                                                   upsampling=upsampling_factor)
+
+        test_split = prep.get_input_label_pairs_for_embedding_audio(test,
+                                                                    col_name='irs_normalized_to_one',
+                                                                    upsampling=upsampling_factor)
+    else:
         train_split, max_cqt_val = prep.get_input_label_pairs_for_embedding(train, cqt_hop_len=cqt_hop_len,
                                                                             col_name='irs_normalized_to_one',
                                                                             upsampling=upsampling_factor)
@@ -285,34 +275,18 @@ def generate_early_signal(dataset, model_struct=0, num_of_epochs=1, learning_rat
                                                                  col_name='irs_normalized_to_one',
                                                                  upsampling=upsampling_factor)
 
-    else:
-        train_split = prep.get_input_label_pairs_for_embedding_audio(train,
-                                                                     col_name='irs_normalized_to_one',
-                                                                     upsampling=upsampling_factor)
-
-        val_split = prep.get_input_label_pairs_for_embedding_audio(val,
-                                                                   col_name='irs_normalized_to_one',
-                                                                   upsampling=upsampling_factor)
-
-        test_split = prep.get_input_label_pairs_for_embedding_audio(test,
-                                                                    col_name='irs_normalized_to_one',
-                                                                    upsampling=upsampling_factor)
-
     first_entry = next(iter(train_split))
     input_length = first_entry[0].numpy().shape[0]
     input_dim = 1
 
     output_length = first_entry[1].shape[0]
-    if cqt_transform:
+    if not run_audio:
         output_dims = first_entry[1].shape[1]
     else:
         output_dims = 1
 
-    print(first_entry[1].shape)
-
     print(f'input shape: {first_entry[0].shape}')
     print(f'out_length: {output_length}')
-    # print(f'out_dims: {output_dims}')
 
     train_batched = train_split.batch(BATCH_SIZE)
     val_batched = val_split.batch(BATCH_SIZE)
@@ -351,20 +325,9 @@ def generate_early_signal(dataset, model_struct=0, num_of_epochs=1, learning_rat
         fp.write(f'start time: {start_time}')
         fp.write(experiment_info)
 
-    """tf.keras.utils.plot_model(
-        ir_generator.model,
-        to_file=f"{experiment_path}/model.png",
-        show_shapes=True,
-        show_dtype=False,
-        show_layer_names=False,
-        rankdir="TB",
-        expand_nested=False,
-        dpi=120,
-        layer_range=None,
-        show_layer_activations=False,
-    )"""
-
     ir_generator.train_model(train_batched, val_batched, epochs=num_of_epochs)
+
+    # Save model after Training
     # ir_generator.model.save(f'{experiment_path}/model.h5')
     LOG.info('...Done. Predicting Test Data...')
 
@@ -376,11 +339,10 @@ def generate_early_signal(dataset, model_struct=0, num_of_epochs=1, learning_rat
     labels = []
     for index, datapoint in enumerate(test_batch):
         if index % 7 == 0:
-            # print(f'Datapoint: {datapoint}')
             inputs.append(datapoint[0])
             label = datapoint[1]
 
-            if cqt_transform:
+            if not run_audio:
                 if max_cqt_val is None:
                     print('error here.')
                 label *= max_cqt_val
@@ -392,15 +354,14 @@ def generate_early_signal(dataset, model_struct=0, num_of_epochs=1, learning_rat
 
             next_input = tf.expand_dims(datapoint[0], axis=0)
             next_prediction = ir_generator.predict(next_input)
-            print(f'next_input_shape: {next_input.shape}')
 
-            if cqt_transform:
+            if not run_audio:
                 next_prediction *= max_cqt_val
 
             predictions.append(next_prediction)
 
     for index, prediction in enumerate(predictions):
-        if cqt_transform:
+        if not run_audio:
             cqt = prediction[0]
             cqt = prep.make_complex(np.reshape(cqt, [cqt.shape[-2], int(cqt.shape[-1] / 2), 2]))
             cqt = np.transpose(cqt)
@@ -508,13 +469,7 @@ def generate_reverb(dataset,
 
     LOG.info('Sequencing and Transforming Data...')
 
-    first_sequence = train.values[0][0][0][0]
-    print(f'here: {first_sequence.shape}')
-    first_sequence = first_sequence[3500:51500]
-
-    draw_plot(first_sequence, save=True, filename='first_test_Signal', title='RIR aus He 2505', limit=1.2)
-
-    run_audio = True
+    run_audio = False
     if run_audio:
         run_audio_experiment(train, val, test,
                              sequence_length,
@@ -533,8 +488,6 @@ def generate_reverb(dataset,
 
 
 def run_audio_experiment(train, val, test, sequence_length, output_length, model_struct, num_of_epochs, learning_rate):
-    train = train[::20]
-
     train_sequences, _ = prep.get_audio_sequence_dataset(train)
     val_sequences, _ = prep.get_audio_sequence_dataset(val)
     test_sequences, test_sequences_per_datapoint = prep.get_audio_sequence_dataset(test)
@@ -572,19 +525,6 @@ def run_audio_experiment(train, val, test, sequence_length, output_length, model
         fp.write(f'start time: {start_time}')
         fp.write(experiment_info)
 
-    """tf.keras.utils.plot_model(
-        reverb_generator.model,
-        to_file=f"{experiment_path}/model.png",
-        show_shapes=True,
-        show_dtype=False,
-        show_layer_names=False,
-        rankdir="TB",
-        expand_nested=False,
-        dpi=120,
-        layer_range=None,
-        show_layer_activations=False,
-    )"""
-
     LOG.info('Training model...\n')
 
     train_ds_batched = train_ds.batch(BATCH_SIZE)
@@ -592,6 +532,7 @@ def run_audio_experiment(train, val, test, sequence_length, output_length, model
 
     reverb_generator.train_model(train_ds_batched, val_ds_batched, epochs=num_of_epochs)
 
+    # Save model after Training
     # reverb_generator.model.save(f'{experiment_path}/model.h5')
 
     LOG.info('\n...Done. Generating Batch Predictions...')
@@ -696,12 +637,6 @@ def run_cqt_experiment(train, val, test,
                        num_of_epochs=1,
                        cqt_window_length=512,
                        learning_rate=1e-4):
-    # train = train[::20]
-
-    LOG.info(f'Actual Train size: {len(train)}')
-
-    """first_sequence = test.values[0][0][0]
-    prep.draw_plot(first_sequence, save=True, filename='first_test_sequence', title='RIR aus He 1539b')"""
 
     train_cqts_0_all, _, cqt_out_len = prep.get_cqts(train, cqt_window_length, ls_pos=0)
     val_cqts_0_all, _, _ = prep.get_cqts(val, cqt_window_length)
@@ -713,6 +648,7 @@ def run_cqt_experiment(train, val, test,
     input_ln = sequence_length
     output_ln = output_length
 
+    print(val_cqts_0_all.shape)
     train_ds_0_cqt, norm_train = prep.make_cqt_dataset(train_cqts_0_all,
                                                        input_length=input_ln,
                                                        output_length=output_ln)
@@ -722,7 +658,6 @@ def run_cqt_experiment(train, val, test,
                                             max_val=norm_train)
     test_ds_0_cqt, _ = prep.make_cqt_dataset(test_cqts_0_all, input_length=input_ln, output_length=output_ln,
                                              max_val=norm_train)
-
 
     print(f'norm_train: {norm_train}')
     LOG.info('...Done.')
@@ -764,19 +699,6 @@ def run_cqt_experiment(train, val, test,
         fp.write(f'start time: {start_time}')
         fp.write(experiment_info)
 
-    """tf.keras.utils.plot_model(
-        reverb_generator.model,
-        to_file=f"{experiment_path}/model.png",
-        show_shapes=True,
-        show_dtype=False,
-        show_layer_names=False,
-        rankdir="TB",
-        expand_nested=False,
-        dpi=120,
-        layer_range=None,
-        show_layer_activations=False,
-    )"""
-
     LOG.info('Training model...\n')
 
     train_ds_0_cqt_batched = train_ds_0_cqt.batch(BATCH_SIZE)
@@ -784,6 +706,7 @@ def run_cqt_experiment(train, val, test,
 
     reverb_generator.train_model(train_ds_0_cqt_batched, val_ds_0_cqt_batched, epochs=num_of_epochs)
 
+    # Save Model after Training
     # reverb_generator.model.save(f'{experiment_path}/model.h5')
 
     LOG.info('\n...Done. Generating Batch Predictions...')
@@ -792,8 +715,6 @@ def run_cqt_experiment(train, val, test,
 
     iteri = iter(test_ds_0_batched)
     test_batch = [next(iteri) for _ in range(int((cqt_out_len - input_ln) / output_length))]
-
-    # print(len(test_batch))
 
     predict_reverb_for_batch_cqt(test_batch,
                                  reverb_generator,
@@ -824,15 +745,11 @@ def get_start_sequences_cqt(test_ds, input_len, label_len):
     amount_to_keep = input_len + label_len
     signal_starts = []
     labels = []
-    print(f'amount_tokeep: {amount_to_keep}')
 
     for elem in test_ds:
         for signal in elem:
             labels.append(signal)
-            # prep.draw_cqt(np.transpose(labels[-1][:amount_to_keep]), cqt_window_size)
-
             signal_start = signal[:input_len]
-            # signal_start_ds = tf.data.Dataset.from_tensor_slices(([signal_starts[:input_len]], [signal_start[label_len:]]))
             signal_starts.append(signal_start)
 
     return signal_starts, labels
@@ -860,10 +777,8 @@ def predict_complete_reverb_cqt(inputs, labelsignals,
 
         input_signal = np.concatenate((real[:, 0], img[:, 0]), axis=-1)
         input_signal = np.expand_dims(input_signal, axis=0)
-        # print(f'first input shape: {input_signal.shape}')
 
         label = np.transpose(labelsignals[index])
-        # print(f'cqt_of_label: {label.shape}')
         end_sample_index = label.shape[-1]
 
         output_cqt_length = predicted_cqts.shape[-1]
@@ -887,8 +802,6 @@ def predict_complete_reverb_cqt(inputs, labelsignals,
             predictions.append(prediction_cqt)
             predicted_cqts = np.concatenate((predicted_cqts, prediction_cqt), axis=-1)
             output_cqt_length = predicted_cqts.shape[-1]
-
-        # print(f'cqt_of_pred: {predicted_cqts.shape}')
 
         # CQT
         prep.draw_cqt(predicted_cqts, save=True, filename=f'{index}_prediction', path=path, hop_length=cqt_window_size)
@@ -957,7 +870,6 @@ def predict_reverb_for_batch_cqt(batch, model, label_length, norm, experiment_pa
         labels_complex = list(map(prep.make_complex, labels))
         labels_complex = np.transpose(np.concatenate(labels_complex, axis=0))
         labels_combine.append(labels_complex)
-        # print(labels_complex.shape)
 
         # predictions
         prediction = model.predict(input_signal)
