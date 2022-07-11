@@ -125,7 +125,7 @@ def main():
             datasets.append(dataset_ml_2102)
 
         # ----------------------------------
-        # Choose the Experiment to run here.
+        # Choose the Experiment to run here. Or use the Command line switches.
         # ----------------------------------
 
         if RUN_EARLY_IR:
