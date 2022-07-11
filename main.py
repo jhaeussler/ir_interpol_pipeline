@@ -128,8 +128,6 @@ def main():
         # Choose the Experiment to run here.
         # ----------------------------------
 
-        # TRY LOW LEARNING RATEs
-        print(f'lr: {LEARNING_RATE}')
         if RUN_EARLY_IR:
             generate_early_signal(datasets[-1],
                                   # sequence_length=SEQUENCE_LENGTH,
