@@ -12,7 +12,5 @@ A Dataset for testing the code can be downloaded from my Google Drive. Just unzi
     <li>tensorflow</li>
 </ol>
 
-All packages run on current versions (June 2022) on Python 3.8.
-
 ## Link to Dataset:
 https://drive.google.com/file/d/1H_mAVHuX44GsETmyoNGk9TLfl3n3MoHK/view?usp=sharing 
